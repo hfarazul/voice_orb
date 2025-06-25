@@ -2,7 +2,7 @@
 
 **Simple, modular voice-reactive animation for web apps.**
 
-> 🎬 **[View Live Demo](https://hfarazul.github.io/voice_orb/examples/voice-reactive.html)** | **[Download Demo Video](1750876529446.mp4)**
+![Voice Orb Demo](1750876529446.gif)
 
 ## Quick Start
 
