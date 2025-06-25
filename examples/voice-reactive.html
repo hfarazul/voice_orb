@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Orb - Voice Reactive</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .orb-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            position: relative;
+        }
+        .voice-indicator {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 15px;
+            background: rgba(0,255,0,0.8);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .voice-indicator.active {
+            opacity: 1;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .primary { background: #007bff; color: white; }
+        .primary:hover { background: #0056b3; transform: translateY(-2px); }
+        .danger { background: #dc3545; color: white; }
+        .danger:hover { background: #c82333; transform: translateY(-2px); }
+        .success { background: #28a745; color: white; }
+        .success:hover { background: #1e7e34; transform: translateY(-2px); }
+        .warning { background: #ffc107; color: black; }
+        .warning:hover { background: #e0a800; transform: translateY(-2px); }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        .status-card h3 {
+            margin-top: 0;
+            color: #00d4ff;
+        }
+        .level-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .level-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+            width: 0%;
+            transition: width 0.1s;
+        }
+        .settings {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+            accent-color: #00d4ff;
+        }
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Orb - Voice Reactive</h1>
+        <p>This example demonstrates voice activity detection with real-time animation control.</p>
+
+        <div class="orb-container">
+            <div class="voice-indicator" id="voiceIndicator">🎤 VOICE DETECTED</div>
+            <lottie-player
+                id="voiceOrb"
+                src="../1750876529446.json"
+                background="transparent"
+                speed="1"
+                style="width: 400px; height: 400px; opacity: 0.9;"
+                loop>
+            </lottie-player>
+        </div>
+
+        <div class="controls">
+            <button class="primary" id="connectBtn" onclick="connectMicrophone()">
+                🎤 Connect Microphone
+            </button>
+            <button class="danger" id="disconnectBtn" onclick="disconnectMicrophone()" disabled>
+                ❌ Disconnect
+            </button>
+            <button class="success" id="vadToggle" onclick="toggleVAD()" disabled>
+                🔊 Enable VAD
+            </button>
+            <button class="warning" onclick="testAnimation()">
+                🧪 Test Animation
+            </button>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>🎤 Voice Activity</h3>
+                <p><strong>Status:</strong> <span id="vadStatus">Disconnected</span></p>
+                <p><strong>Voice Level:</strong> <span id="voiceLevel">0%</span></p>
+                <div class="level-bar">
+                    <div class="level-fill" id="levelBar"></div>
+                </div>
+                <p><strong>Threshold:</strong> <span id="threshold">1%</span></p>
+                <p><strong>Sensitivity:</strong> <span id="sensitivity">60%</span></p>
+            </div>
+
+            <div class="status-card">
+                <h3>🎨 Animation</h3>
+                <p><strong>State:</strong> <span id="animState">Ready</span></p>
+                <p><strong>Speed:</strong> <span id="currentSpeed">1.0x</span></p>
+                <p><strong>Opacity:</strong> <span id="currentOpacity">90%</span></p>
+                <p><strong>Voice Control:</strong> <span id="voiceControl">Disabled</span></p>
+            </div>
+        </div>
+
+        <div class="settings">
+            <h3>⚙️ VAD Settings</h3>
+
+            <div class="slider-container">
+                <label for="thresholdSlider">Voice Threshold: <span id="thresholdValue">1%</span></label>
+                <input type="range" id="thresholdSlider" class="slider"
+                       min="0.001" max="0.1" step="0.001" value="0.01"
+                       oninput="updateThreshold(this.value)">
+            </div>
+
+            <div class="slider-container">
+                <label for="sensitivitySlider">Sensitivity: <span id="sensitivityValue">60%</span></label>
+                <input type="range" id="sensitivitySlider" class="slider"
+                       min="0.1" max="2" step="0.1" value="0.6"
+                       oninput="updateSensitivity(this.value)">
+            </div>
+
+            <div class="slider-container">
+                <label for="smoothingSlider">Smoothing: <span id="smoothingValue">85%</span></label>
+                <input type="range" id="smoothingSlider" class="slider"
+                       min="0.1" max="0.99" step="0.01" value="0.85"
+                       oninput="updateSmoothing(this.value)">
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>📋 Integration Code:</h3>
+            <pre><code>// Create voice-reactive orb
+const orb = new VoiceOrbAdvanced({
+    debug: true,
+    enableVAD: true,
+    vad: {
+        threshold: 0.01,
+        sensitivity: 0.6,
+        smoothing: 0.85
+    }
+});
+
+// Initialize
+await orb.init('voiceOrb');
+
+// Connect microphone and enable VAD
+await orb.connectMicrophone();
+
+// The orb now responds to voice automatically!</code></pre>
+        </div>
+    </div>
+
+    <!-- Include Lottie Player -->
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+    <!-- Include Voice Orb Modules -->
+    <script src="../voice-orb-core.js"></script>
+    <script src="../voice-orb-vad.js"></script>
+    <script src="../voice-orb.js"></script>
+
+    <script>
+        let orb = null;
+        let isConnected = false;
+        let vadEnabled = false;
+
+        async function initializeOrb() {
+            orb = new VoiceOrbAdvanced({
+                debug: true,
+                enableVAD: true,
+                vad: {
+                    threshold: 0.01,
+                    sensitivity: 0.6,
+                    smoothing: 0.85
+                }
+            });
+
+            // Setup event listeners
+            orb.orb.on('play', () => updateAnimationStatus('Playing'));
+            orb.orb.on('pause', () => updateAnimationStatus('Paused'));
+            orb.orb.on('stop', () => updateAnimationStatus('Stopped'));
+
+            orb.orb.on('speedChange', (speed) => {
+                document.getElementById('currentSpeed').textContent = speed.toFixed(1) + 'x';
+            });
+
+            orb.orb.on('opacityChange', (opacity) => {
+                document.getElementById('currentOpacity').textContent = Math.round(opacity * 100) + '%';
+            });
+
+            // VAD event listeners
+            if (orb.vad) {
+                orb.vad.on('voiceStart', () => {
+                    document.getElementById('voiceIndicator').classList.add('active');
+                    updateVADStatus('Voice Active');
+                });
+
+                orb.vad.on('voiceEnd', () => {
+                    document.getElementById('voiceIndicator').classList.remove('active');
+                    updateVADStatus(isConnected ? 'Listening' : 'Disconnected');
+                });
+
+                orb.vad.on('voiceLevel', (data) => {
+                    const level = Math.round(data.smoothed * 100);
+                    document.getElementById('voiceLevel').textContent = level + '%';
+                    document.getElementById('levelBar').style.width = Math.min(level * 2, 100) + '%';
+                });
+            }
+
+            // Initialize with the lottie player
+            const success = await orb.init('voiceOrb');
+            if (success) {
+                updateAnimationStatus('Ready');
+            } else {
+                updateAnimationStatus('Failed to initialize');
+            }
+        }
+
+        async function connectMicrophone() {
+            if (!orb) return;
+
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const vadToggle = document.getElementById('vadToggle');
+
+            connectBtn.disabled = true;
+            connectBtn.textContent = '🔄 Connecting...';
+
+            try {
+                const success = await orb.connectMicrophone();
+                if (success) {
+                    isConnected = true;
+                    vadEnabled = true;
+
+                    connectBtn.style.display = 'none';
+                    disconnectBtn.disabled = false;
+                    vadToggle.disabled = false;
+                    vadToggle.textContent = '🔇 Disable VAD';
+                    vadToggle.className = 'danger';
+
+                    updateVADStatus('Listening');
+                    updateVoiceControl('Enabled');
+                } else {
+                    throw new Error('Failed to connect microphone');
+                }
+            } catch (error) {
+                alert('Failed to connect microphone: ' + error.message);
+                connectBtn.disabled = false;
+                connectBtn.textContent = '🎤 Connect Microphone';
+            }
+        }
+
+        function disconnectMicrophone() {
+            if (!orb) return;
+
+            orb.disconnectMicrophone();
+            isConnected = false;
+            vadEnabled = false;
+
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const vadToggle = document.getElementById('vadToggle');
+
+            connectBtn.style.display = 'inline-block';
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            vadToggle.disabled = true;
+            vadToggle.textContent = '🔊 Enable VAD';
+            vadToggle.className = 'success';
+
+            document.getElementById('voiceIndicator').classList.remove('active');
+            updateVADStatus('Disconnected');
+            updateVoiceControl('Disabled');
+        }
+
+        function toggleVAD() {
+            if (!orb || !isConnected) return;
+
+            const vadToggle = document.getElementById('vadToggle');
+
+            if (vadEnabled) {
+                orb.setVAD(false);
+                vadEnabled = false;
+                vadToggle.textContent = '🔊 Enable VAD';
+                vadToggle.className = 'success';
+                updateVADStatus('Connected (Disabled)');
+                updateVoiceControl('Disabled');
+            } else {
+                orb.setVAD(true);
+                vadEnabled = true;
+                vadToggle.textContent = '🔇 Disable VAD';
+                vadToggle.className = 'danger';
+                updateVADStatus('Listening');
+                updateVoiceControl('Enabled');
+            }
+        }
+
+        function testAnimation() {
+            if (!orb) return;
+
+            // Temporarily disable VAD for testing
+            const wasVADEnabled = vadEnabled;
+            if (vadEnabled) orb.setVAD(false);
+
+            orb.orb.play();
+            orb.orb.setSpeed(2);
+            orb.orb.setVoiceLevel(2.5);
+
+            setTimeout(() => {
+                orb.orb.setSpeed(1);
+                orb.orb.setVoiceLevel(1);
+                if (wasVADEnabled) orb.setVAD(true);
+            }, 3000);
+        }
+
+        function updateThreshold(value) {
+            if (orb && orb.vad) {
+                orb.vad.updateConfig({ threshold: parseFloat(value) });
+                document.getElementById('thresholdValue').textContent = Math.round(value * 1000) / 10 + '%';
+                document.getElementById('threshold').textContent = Math.round(value * 1000) / 10 + '%';
+            }
+        }
+
+        function updateSensitivity(value) {
+            if (orb && orb.vad) {
+                orb.vad.updateConfig({ sensitivity: parseFloat(value) });
+                document.getElementById('sensitivityValue').textContent = Math.round(value * 100) + '%';
+                document.getElementById('sensitivity').textContent = Math.round(value * 100) + '%';
+            }
+        }
+
+        function updateSmoothing(value) {
+            if (orb && orb.vad) {
+                orb.vad.updateConfig({ smoothing: parseFloat(value) });
+                document.getElementById('smoothingValue').textContent = Math.round(value * 100) + '%';
+            }
+        }
+
+        function updateAnimationStatus(status) {
+            document.getElementById('animState').textContent = status;
+        }
+
+        function updateVADStatus(status) {
+            document.getElementById('vadStatus').textContent = status;
+        }
+
+        function updateVoiceControl(status) {
+            document.getElementById('voiceControl').textContent = status;
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initializeOrb);
+    </script>
+</body>
+</html>

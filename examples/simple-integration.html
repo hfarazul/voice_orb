@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Orb - Simple Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .orb-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .primary { background: #007bff; color: white; }
+        .primary:hover { background: #0056b3; }
+        .secondary { background: #6c757d; color: white; }
+        .secondary:hover { background: #545b62; }
+        .success { background: #28a745; color: white; }
+        .success:hover { background: #1e7e34; }
+        .info { background: #17a2b8; color: white; }
+        .info:hover { background: #138496; }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .slider-container {
+            margin: 20px 0;
+        }
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice Orb - Simple Integration</h1>
+        <p>This example shows how to use just the core Voice Orb module for basic animation control.</p>
+
+        <div class="orb-container">
+            <lottie-player
+                id="voiceOrb"
+                src="../1750876529446.json"
+                background="transparent"
+                speed="1"
+                style="width: 300px; height: 300px; opacity: 0.9;"
+                loop
+                autoplay>
+            </lottie-player>
+        </div>
+
+        <div class="controls">
+            <button class="primary" onclick="playOrb()">▶️ Play</button>
+            <button class="secondary" onclick="pauseOrb()">⏸️ Pause</button>
+            <button class="info" onclick="stopOrb()">⏹️ Stop</button>
+            <button class="success" onclick="toggleLoop()">🔄 Toggle Loop</button>
+        </div>
+
+        <div class="slider-container">
+            <label for="speedSlider">Animation Speed:</label>
+            <input type="range" id="speedSlider" class="slider"
+                   min="0.1" max="3" step="0.1" value="1"
+                   oninput="setSpeed(this.value)">
+            <span id="speedValue">1.0x</span>
+        </div>
+
+        <div class="slider-container">
+            <label for="opacitySlider">Opacity:</label>
+            <input type="range" id="opacitySlider" class="slider"
+                   min="0.1" max="1" step="0.1" value="0.9"
+                   oninput="setOpacity(this.value)">
+            <span id="opacityValue">90%</span>
+        </div>
+
+        <div class="status">
+            <h3>Status:</h3>
+            <p><strong>State:</strong> <span id="orbState">Initializing...</span></p>
+            <p><strong>Speed:</strong> <span id="currentSpeed">1.0x</span></p>
+            <p><strong>Loop:</strong> <span id="loopStatus">Enabled</span></p>
+            <p><strong>Opacity:</strong> <span id="currentOpacity">90%</span></p>
+        </div>
+
+        <div class="info-box" style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 5px;">
+            <h3>Code Example:</h3>
+            <pre><code>// Initialize the voice orb
+const orb = new VoiceOrbCore();
+await orb.init('voiceOrb');
+
+// Control the animation
+orb.play();
+orb.pause();
+orb.setSpeed(1.5);
+orb.setOpacity(0.8);
+
+// Listen to events
+orb.on('play', () => console.log('Animation started'));
+orb.on('pause', () => console.log('Animation paused'));</code></pre>
+        </div>
+    </div>
+
+    <!-- Include Lottie Player -->
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+    <!-- Include Voice Orb Core -->
+    <script src="../voice-orb-core.js"></script>
+
+    <script>
+        let orb = null;
+
+        async function initializeOrb() {
+            orb = new VoiceOrbCore({
+                debug: true
+            });
+
+            // Setup event listeners
+            orb.on('play', () => updateStatus('Playing'));
+            orb.on('pause', () => updateStatus('Paused'));
+            orb.on('stop', () => updateStatus('Stopped'));
+            orb.on('speedChange', (speed) => {
+                document.getElementById('currentSpeed').textContent = speed.toFixed(1) + 'x';
+            });
+            orb.on('loopChange', (loop) => {
+                document.getElementById('loopStatus').textContent = loop ? 'Enabled' : 'Disabled';
+            });
+            orb.on('opacityChange', (opacity) => {
+                document.getElementById('currentOpacity').textContent = Math.round(opacity * 100) + '%';
+            });
+
+            // Initialize with the lottie player
+            const success = await orb.init('voiceOrb');
+            if (success) {
+                updateStatus('Ready');
+            } else {
+                updateStatus('Failed to initialize');
+            }
+        }
+
+        function updateStatus(state) {
+            document.getElementById('orbState').textContent = state;
+        }
+
+        function playOrb() {
+            if (orb) orb.play();
+        }
+
+        function pauseOrb() {
+            if (orb) orb.pause();
+        }
+
+        function stopOrb() {
+            if (orb) orb.stop();
+        }
+
+        function toggleLoop() {
+            if (orb) {
+                const currentLoop = orb.getState().isLooping;
+                orb.setLoop(!currentLoop);
+            }
+        }
+
+        function setSpeed(value) {
+            if (orb) orb.setSpeed(parseFloat(value));
+            document.getElementById('speedValue').textContent = parseFloat(value).toFixed(1) + 'x';
+        }
+
+        function setOpacity(value) {
+            if (orb) orb.setOpacity(parseFloat(value));
+            document.getElementById('opacityValue').textContent = Math.round(value * 100) + '%';
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initializeOrb);
+    </script>
+</body>
+</html>
